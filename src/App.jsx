@@ -17,6 +17,7 @@ import Subscription from './pages/Subscription';
 import CheckoutSuccess from './pages/CheckoutSuccess';
 import TestPage from './pages/TestPage';
 import OAuthTest from './pages/OAuthTest';
+import OAuthDiagnostic from './pages/OAuthDiagnostic';
 
 // Import components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -34,6 +35,7 @@ function App() {
             <Routes>
               {/* Public routes - OAuth callbacks MUST be outside protected routes */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/oauth-diagnostic" element={<OAuthDiagnostic />} />
               <Route path="/auth/google/callback" element={<OAuthCallback />} />
               <Route path="/auth/apple/callback" element={<OAuthCallback />} />
               <Route path="/auth/:provider/callback" element={<OAuthCallback />} />

@@ -67,6 +67,15 @@ export const authAPI = {
     const redirectUri = `${window.location.origin}/auth/google/callback`;
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     
+    // DEBUG: Log OAuth configuration
+    console.log('🔍 OAuth Debug Info:');
+    console.log('Client ID from env:', clientId);
+    console.log('Client ID length:', clientId?.length);
+    console.log('Client ID first/last chars:', clientId ? `${clientId.substring(0, 10)}...${clientId.substring(clientId.length - 10)}` : 'undefined');
+    console.log('Redirect URI:', redirectUri);
+    console.log('Window origin:', window.location.origin);
+    console.log('All env vars:', Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')));
+    
     if (clientId) {
       // Real OAuth flow
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
@@ -76,6 +85,19 @@ export const authAPI = {
         `scope=openid%20email%20profile&` +
         `access_type=offline&` +
         `prompt=consent`;
+      
+      // DEBUG: Log the complete OAuth URL
+      console.log('🔗 Complete OAuth URL:', authUrl);
+      console.log('🔗 Decoded redirect URI:', decodeURIComponent(redirectUri));
+      
+      // Alert for debugging (remove in production)
+      if (import.meta.env.VITE_DEBUG === 'true') {
+        const debugInfo = `OAuth Debug:\n\nClient ID: ${clientId}\n\nRedirect URI: ${redirectUri}\n\nConfirm this matches Google Console?`;
+        if (!confirm(debugInfo)) {
+          console.error('OAuth cancelled by user for debugging');
+          return null;
+        }
+      }
       
       window.location.href = authUrl;
       return null; // Will redirect, no response needed

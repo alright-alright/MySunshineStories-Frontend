@@ -1,15 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sun, Apple } from 'lucide-react';
+import { Sun, Apple, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugInfo, setDebugInfo] = useState({});
+  
+  useEffect(() => {
+    // Collect debug information on mount
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const currentOrigin = window.location.origin;
+    const expectedRedirectUri = `${currentOrigin}/auth/google/callback`;
+    
+    setDebugInfo({
+      clientId: clientId || 'NOT SET',
+      clientIdLength: clientId?.length || 0,
+      currentOrigin,
+      expectedRedirectUri,
+      isConfigured: !!clientId,
+      envMode: import.meta.env.MODE,
+      allEnvVars: Object.keys(import.meta.env).filter(k => k.startsWith('VITE_'))
+    });
+    
+    // Show debug info if in debug mode or if client ID is missing
+    if (import.meta.env.VITE_DEBUG === 'true' || !clientId) {
+      setShowDebug(true);
+    }
+  }, []);
   
   const handleLogin = async (provider) => {
     setLoading(true);
+    
+    // Log debug info before attempting login
+    console.log('🔐 Login attempt:', provider);
+    console.log('Debug info:', debugInfo);
+    
     try {
       const success = await login(provider);
       if (success) {
@@ -45,6 +74,35 @@ const LoginPage = () => {
           </h1>
           <p className="text-gray-600 text-lg">Create magical stories that help your little ones shine</p>
         </div>
+
+        {/* Debug Info Panel */}
+        {showDebug && (
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start space-x-2">
+              <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+              <div className="flex-1 text-sm">
+                <p className="font-semibold text-yellow-800 mb-2">OAuth Configuration</p>
+                <div className="space-y-1 text-xs font-mono text-gray-700">
+                  <p>Client ID: {debugInfo.clientId?.substring(0, 20)}...</p>
+                  <p>Origin: {debugInfo.currentOrigin}</p>
+                  <p>Redirect: {debugInfo.expectedRedirectUri}</p>
+                  <p>Configured: {debugInfo.isConfigured ? '✅' : '❌'}</p>
+                </div>
+                {!debugInfo.isConfigured && (
+                  <p className="mt-2 text-yellow-700">
+                    ⚠️ Google Client ID not configured. Using demo mode.
+                  </p>
+                )}
+                <button
+                  onClick={() => setShowDebug(false)}
+                  className="mt-2 text-xs text-yellow-600 hover:text-yellow-700"
+                >
+                  Hide debug info
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* OAuth Login Buttons */}
         <div className="space-y-3">
