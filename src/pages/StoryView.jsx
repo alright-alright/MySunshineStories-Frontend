@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { storyAPI } from '../services/api';
-import { BookOpen, ArrowLeft, Download, Share2, Sparkles } from 'lucide-react';
+import { BookOpen, ArrowLeft, Download, Share2, Sparkles, Maximize, X, Play, Video } from 'lucide-react';
 
 const StoryView = () => {
   const { id } = useParams();
@@ -9,6 +9,8 @@ const StoryView = () => {
   const [story, setStory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isVideoFullScreen, setIsVideoFullScreen] = useState(false);
 
   useEffect(() => {
     fetchStory();
@@ -115,6 +117,123 @@ const StoryView = () => {
           </button>
         </div>
       </div>
+
+      {/* Preview Windows Section */}
+      <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Story Preview Window */}
+        <div className="bg-white rounded-xl shadow-lg p-6 lg:col-span-1">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-yellow-500" />
+              Story Preview
+            </h2>
+            <button
+              onClick={() => setIsFullScreen(true)}
+              className="px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg hover:shadow-md transition flex items-center gap-2 text-sm"
+            >
+              <Maximize className="w-4 h-4" />
+              Full Screen
+            </button>
+          </div>
+          
+          {/* Preview Content Box - 400px height as requested */}
+          <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-6 overflow-y-auto" style={{ height: '400px' }}>
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">{story.title}</h3>
+            <div className="space-y-3 text-gray-700">
+              {story.content.split('\n\n').slice(0, 5).map((paragraph, index) => (
+                <p key={index} className="leading-relaxed">
+                  {paragraph}
+                </p>
+              ))}
+              {story.content.split('\n\n').length > 5 && (
+                <p className="text-gray-500 italic mt-4">... Continue reading in full screen</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Video Preview Window */}
+        <div className="bg-white rounded-xl shadow-lg p-6 lg:col-span-1">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <Video className="w-5 h-5 text-orange-500" />
+              Video Preview
+            </h2>
+          </div>
+          
+          {/* Video Preview Box - matching height */}
+          <div 
+            onClick={() => setIsVideoFullScreen(true)}
+            className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:shadow-md transition group"
+            style={{ height: '400px' }}
+          >
+            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition">
+              <Play className="w-10 h-10 text-orange-500 ml-1" />
+            </div>
+            <p className="mt-4 text-xl font-semibold text-gray-700">Video Coming Soon</p>
+            <p className="text-sm text-gray-500 mt-2 text-center">Click to preview the upcoming video feature</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Full Screen Story Modal */}
+      {isFullScreen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-gradient-to-r from-yellow-400 to-orange-500 p-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-white">{story.title}</h2>
+              <button
+                onClick={() => setIsFullScreen(false)}
+                className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition"
+              >
+                <X className="w-6 h-6 text-white" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-8 bg-gradient-to-br from-yellow-50 to-white">
+              <div className="prose prose-lg max-w-none">
+                {story.content.split('\n\n').map((paragraph, index) => (
+                  <p key={index} className="mb-4 text-gray-700 leading-relaxed">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Screen Video Modal */}
+      {isVideoFullScreen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">Video Player</h2>
+              <button
+                onClick={() => setIsVideoFullScreen(false)}
+                className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl p-12 flex flex-col items-center justify-center">
+              <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-xl">
+                <Video className="w-12 h-12 text-orange-500" />
+              </div>
+              <h3 className="mt-6 text-2xl font-bold text-gray-800">Video Generation Coming Soon</h3>
+              <p className="mt-3 text-gray-600 text-center max-w-md">
+                We're working on bringing your stories to life with animated videos. 
+                This exciting feature will be available soon!
+              </p>
+              <button
+                onClick={() => setIsVideoFullScreen(false)}
+                className="mt-6 px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg font-semibold hover:shadow-lg transition"
+              >
+                Got it!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Story Content */}
       <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
