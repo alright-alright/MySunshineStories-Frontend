@@ -15,6 +15,8 @@ import StoryView from './pages/StoryView';
 import StoryHistory from './pages/StoryHistory';
 import Subscription from './pages/Subscription';
 import CheckoutSuccess from './pages/CheckoutSuccess';
+import TestPage from './pages/TestPage';
+import OAuthTest from './pages/OAuthTest';
 
 // Import components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -30,8 +32,10 @@ function App() {
         <Router>
           <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100">
             <Routes>
-              {/* Public routes */}
+              {/* Public routes - OAuth callbacks MUST be outside protected routes */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/auth/google/callback" element={<OAuthCallback />} />
+              <Route path="/auth/apple/callback" element={<OAuthCallback />} />
               <Route path="/auth/:provider/callback" element={<OAuthCallback />} />
               
               {/* Protected routes with Navigation wrapper */}
@@ -46,11 +50,13 @@ function App() {
                   <Route path="stories" element={<StoryHistory />} />
                   <Route path="subscription" element={<Subscription />} />
                   <Route path="subscription/success" element={<CheckoutSuccess />} />
+                  <Route path="test" element={<TestPage />} />
+                  <Route path="oauth-test" element={<OAuthTest />} />
                 </Route>
               </Route>
               
-              {/* Fallback */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Fallback - redirect to login for better UX */}
+              <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
           </div>
         </Router>
