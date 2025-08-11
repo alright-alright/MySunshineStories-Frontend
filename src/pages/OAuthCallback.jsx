@@ -23,7 +23,8 @@ const OAuthCallback = () => {
       if (code) {
         const success = await handleOAuthCallback(provider, code);
         if (success) {
-          navigate('/');
+          // CEO wants users to go directly to create profile after OAuth
+          navigate('/sunshines/create');
         } else {
           navigate('/login');
         }

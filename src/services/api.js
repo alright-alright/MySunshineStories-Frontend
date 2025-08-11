@@ -61,87 +61,90 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
-  // Mock OAuth login for demo purposes
+  // OAuth login with proper backend integration
   googleLogin: async () => {
-    // For demo: directly create a mock user session
-    try {
-      const response = await api.post('/api/v1/auth/demo-login', {
-        provider: 'google',
-        email: 'demo@mysunshinestory.ai',
-        name: 'Demo User'
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Demo login failed:', error);
-      // Fallback to mock data if backend isn't configured
-      const mockResponse = {
-        access_token: 'demo_token_' + Date.now(),
-        refresh_token: 'demo_refresh_' + Date.now(),
-        user: {
-          id: 1,
-          email: 'demo@mysunshinestory.ai',
-          full_name: 'Demo User',
-          created_at: new Date().toISOString()
-        }
-      };
-      localStorage.setItem('access_token', mockResponse.access_token);
-      localStorage.setItem('refresh_token', mockResponse.refresh_token);
-      return mockResponse;
+    // In production, initiate OAuth flow
+    const redirectUri = `${window.location.origin}/auth/google/callback`;
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    
+    if (clientId) {
+      // Real OAuth flow
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${clientId}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `response_type=code&` +
+        `scope=openid%20email%20profile&` +
+        `access_type=offline&` +
+        `prompt=consent`;
+      
+      window.location.href = authUrl;
+      return null; // Will redirect, no response needed
+    } else {
+      // Development/demo mode - use backend demo endpoint
+      try {
+        const response = await api.post('/api/v1/auth/oauth/login', {
+          provider: 'google',
+          token: 'demo_token' // Backend will handle demo mode
+        });
+        return response.data;
+      } catch (error) {
+        console.error('OAuth login failed:', error);
+        throw error;
+      }
     }
   },
   
   appleLogin: async () => {
-    // For demo: directly create a mock user session
-    try {
-      const response = await api.post('/api/v1/auth/demo-login', {
-        provider: 'apple',
-        email: 'demo@mysunshinestory.ai',
-        name: 'Demo User'
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Demo login failed:', error);
-      // Fallback to mock data if backend isn't configured
-      const mockResponse = {
-        access_token: 'demo_token_' + Date.now(),
-        refresh_token: 'demo_refresh_' + Date.now(),
-        user: {
-          id: 1,
-          email: 'demo@mysunshinestory.ai',
-          full_name: 'Demo User',
-          created_at: new Date().toISOString()
-        }
-      };
-      localStorage.setItem('access_token', mockResponse.access_token);
-      localStorage.setItem('refresh_token', mockResponse.refresh_token);
-      return mockResponse;
+    // Apple OAuth flow
+    const redirectUri = `${window.location.origin}/auth/apple/callback`;
+    const clientId = import.meta.env.VITE_APPLE_CLIENT_ID;
+    
+    if (clientId) {
+      // Real OAuth flow  
+      const authUrl = `https://appleid.apple.com/auth/authorize?` +
+        `client_id=${clientId}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `response_type=code&` +
+        `response_mode=form_post&` +
+        `scope=name%20email`;
+      
+      window.location.href = authUrl;
+      return null; // Will redirect, no response needed
+    } else {
+      // Development/demo mode
+      try {
+        const response = await api.post('/api/v1/auth/oauth/login', {
+          provider: 'apple',
+          token: 'demo_token' // Backend will handle demo mode
+        });
+        return response.data;
+      } catch (error) {
+        console.error('OAuth login failed:', error);
+        throw error;
+      }
     }
   },
   
-  // Handle OAuth callback (not used in demo mode)
+  // Handle OAuth callback
   handleCallback: async (provider, code) => {
-    // This would be used for real OAuth flow
-    return null;
+    try {
+      const redirectUri = `${window.location.origin}/auth/${provider}/callback`;
+      const response = await api.post('/api/v1/auth/oauth/exchange', {
+        provider,
+        code,
+        redirect_uri: redirectUri
+      });
+      return response.data;
+    } catch (error) {
+      console.error('OAuth callback failed:', error);
+      throw error;
+    }
   },
   
   // Get current user
   getCurrentUser: async () => {
-    try {
-      const response = await api.get('/api/v1/auth/me');
-      return response.data;
-    } catch (error) {
-      // For demo, return mock user if token exists
-      const token = localStorage.getItem('access_token');
-      if (token && token.startsWith('demo_token_')) {
-        return {
-          id: 1,
-          email: 'demo@mysunshinestory.ai',
-          full_name: 'Demo User',
-          created_at: new Date().toISOString()
-        };
-      }
-      throw error;
-    }
+    const response = await api.get('/api/v1/auth/me');
+    return response.data;
   },
   
   // Logout
@@ -152,19 +155,10 @@ export const authAPI = {
   
   // Refresh token
   refreshToken: async (refreshToken) => {
-    try {
-      const response = await api.post('/api/v1/auth/refresh', {
-        refresh_token: refreshToken
-      });
-      return response.data;
-    } catch (error) {
-      // For demo, generate new mock token
-      if (refreshToken && refreshToken.startsWith('demo_refresh_')) {
-        const newToken = 'demo_token_' + Date.now();
-        return { access_token: newToken };
-      }
-      throw error;
-    }
+    const response = await api.post('/api/v1/auth/refresh', {
+      refresh_token: refreshToken
+    });
+    return response.data;
   }
 };
 
@@ -172,19 +166,19 @@ export const authAPI = {
 export const sunshineAPI = {
   // List all sunshine profiles
   listProfiles: async () => {
-    const response = await api.get('/v1/sunshines');
+    const response = await api.get('/api/v1/sunshines');
     return response.data;
   },
   
   // Get single profile
   getProfile: async (id) => {
-    const response = await api.get(`/v1/sunshines/${id}`);
+    const response = await api.get(`/api/v1/sunshines/${id}`);
     return response.data;
   },
   
   // Create profile
   createProfile: async (formData) => {
-    const response = await api.post('/v1/sunshines', formData, {
+    const response = await api.post('/api/v1/sunshines', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -194,7 +188,7 @@ export const sunshineAPI = {
   
   // Update profile
   updateProfile: async (id, formData) => {
-    const response = await api.put(`/v1/sunshines/${id}`, formData, {
+    const response = await api.put(`/api/v1/sunshines/${id}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -204,13 +198,13 @@ export const sunshineAPI = {
   
   // Delete profile
   deleteProfile: async (id) => {
-    const response = await api.delete(`/v1/sunshines/${id}`);
+    const response = await api.delete(`/api/v1/sunshines/${id}`);
     return response.data;
   },
   
   // Add family member
   addFamilyMember: async (sunshineId, formData) => {
-    const response = await api.post(`/v1/sunshines/${sunshineId}/family`, formData, {
+    const response = await api.post(`/api/v1/sunshines/${sunshineId}/family`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -220,13 +214,13 @@ export const sunshineAPI = {
   
   // Remove family member
   removeFamilyMember: async (sunshineId, memberId) => {
-    const response = await api.delete(`/v1/sunshines/${sunshineId}/family/${memberId}`);
+    const response = await api.delete(`/api/v1/sunshines/${sunshineId}/family/${memberId}`);
     return response.data;
   },
   
   // Add comfort item
   addComfortItem: async (sunshineId, formData) => {
-    const response = await api.post(`/v1/sunshines/${sunshineId}/comfort-items`, formData, {
+    const response = await api.post(`/api/v1/sunshines/${sunshineId}/comfort-items`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -236,7 +230,7 @@ export const sunshineAPI = {
   
   // Remove comfort item
   removeComfortItem: async (sunshineId, itemId) => {
-    const response = await api.delete(`/v1/sunshines/${sunshineId}/comfort-items/${itemId}`);
+    const response = await api.delete(`/api/v1/sunshines/${sunshineId}/comfort-items/${itemId}`);
     return response.data;
   }
 };
@@ -245,13 +239,13 @@ export const sunshineAPI = {
 export const storyAPI = {
   // Generate story (v2 - profile based)
   generateStory: async (data) => {
-    const response = await api.post('/v2/stories/generate', data);
+    const response = await api.post('/api/v2/stories/generate', data);
     return response.data;
   },
   
   // Generate enhanced story with photos (v3)
   generateEnhancedStory: async (formData) => {
-    const response = await api.post('/v3/stories/generate-with-photos', formData, {
+    const response = await api.post('/api/v3/stories/generate-with-photos', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -261,7 +255,7 @@ export const storyAPI = {
   
   // Get story history
   getHistory: async (limit = 10, offset = 0) => {
-    const response = await api.get('/v2/stories/history', {
+    const response = await api.get('/api/v2/stories/history', {
       params: { limit, offset }
     });
     return response.data;
@@ -269,19 +263,19 @@ export const storyAPI = {
   
   // Get single story
   getStory: async (id) => {
-    const response = await api.get(`/v2/stories/${id}`);
+    const response = await api.get(`/api/v2/stories/${id}`);
     return response.data;
   },
   
   // Toggle favorite
   toggleFavorite: async (id) => {
-    const response = await api.put(`/v2/stories/${id}/favorite`);
+    const response = await api.put(`/api/v2/stories/${id}/favorite`);
     return response.data;
   },
   
   // Delete story
   deleteStory: async (id) => {
-    const response = await api.delete(`/v2/stories/${id}`);
+    const response = await api.delete(`/api/v2/stories/${id}`);
     return response.data;
   },
   
@@ -289,19 +283,19 @@ export const storyAPI = {
   rateStory: async (id, rating) => {
     const formData = new FormData();
     formData.append('rating', rating);
-    const response = await api.post(`/v2/stories/${id}/rate`, formData);
+    const response = await api.post(`/api/v2/stories/${id}/rate`, formData);
     return response.data;
   },
   
   // Export to PDF
   exportPDF: async (id) => {
-    const response = await api.post(`/v2/stories/${id}/export-pdf`);
+    const response = await api.post(`/api/v2/stories/${id}/export-pdf`);
     return response.data;
   },
   
   // Get story templates
   getTemplates: async (ageGroup) => {
-    const response = await api.get('/v3/stories/story-templates', {
+    const response = await api.get('/api/v3/stories/story-templates', {
       params: { age_group: ageGroup }
     });
     return response.data;
@@ -309,13 +303,13 @@ export const storyAPI = {
   
   // Get character consistency tips
   getCharacterTips: async () => {
-    const response = await api.get('/v3/stories/character-consistency-tips');
+    const response = await api.get('/api/v3/stories/character-consistency-tips');
     return response.data;
   },
   
   // Analyze photo for character
   analyzePhoto: async (formData) => {
-    const response = await api.post('/v3/stories/analyze-photo-for-character', formData, {
+    const response = await api.post('/api/v3/stories/analyze-photo-for-character', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -328,19 +322,19 @@ export const storyAPI = {
 export const subscriptionAPI = {
   // Get subscription plans
   getPlans: async () => {
-    const response = await api.get('/v1/subscription/plans');
+    const response = await api.get('/api/v1/subscription/plans');
     return response.data;
   },
   
   // Get current subscription
   getCurrentSubscription: async () => {
-    const response = await api.get('/v1/subscription/current');
+    const response = await api.get('/api/v1/subscription/current');
     return response.data;
   },
   
   // Create checkout session
   createCheckout: async (plan, successUrl, cancelUrl) => {
-    const response = await api.post('/v1/subscription/checkout', {
+    const response = await api.post('/api/v1/subscription/checkout', {
       plan,
       success_url: successUrl,
       cancel_url: cancelUrl
@@ -350,7 +344,7 @@ export const subscriptionAPI = {
   
   // Create payment intent for individual story
   createPaymentIntent: async (description) => {
-    const response = await api.post('/v1/subscription/payment-intent', {
+    const response = await api.post('/api/v1/subscription/payment-intent', {
       description
     });
     return response.data;
@@ -358,25 +352,25 @@ export const subscriptionAPI = {
   
   // Update subscription
   updateSubscription: async (plan) => {
-    const response = await api.put('/v1/subscription/update', { plan });
+    const response = await api.put('/api/v1/subscription/update', { plan });
     return response.data;
   },
   
   // Cancel subscription
   cancelSubscription: async (immediate = false) => {
-    const response = await api.post('/v1/subscription/cancel', { immediate });
+    const response = await api.post('/api/v1/subscription/cancel', { immediate });
     return response.data;
   },
   
   // Reactivate subscription
   reactivateSubscription: async () => {
-    const response = await api.post('/v1/subscription/reactivate');
+    const response = await api.post('/api/v1/subscription/reactivate');
     return response.data;
   },
   
   // Create customer portal session
   createPortalSession: async (returnUrl) => {
-    const response = await api.post('/v1/subscription/portal', {
+    const response = await api.post('/api/v1/subscription/portal', {
       return_url: returnUrl
     });
     return response.data;
@@ -384,13 +378,13 @@ export const subscriptionAPI = {
   
   // Get usage stats
   getUsageStats: async () => {
-    const response = await api.get('/v1/subscription/usage');
+    const response = await api.get('/api/v1/subscription/usage');
     return response.data;
   },
   
   // Get payment history
   getPaymentHistory: async (limit = 10) => {
-    const response = await api.get('/v1/subscription/history', {
+    const response = await api.get('/api/v1/subscription/history', {
       params: { limit }
     });
     return response.data;
@@ -400,7 +394,7 @@ export const subscriptionAPI = {
 // Health check
 export const healthAPI = {
   check: async () => {
-    const response = await api.get('/v1/health');
+    const response = await api.get('/api/v1/health');
     return response.data;
   }
 };

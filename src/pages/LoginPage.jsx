@@ -13,10 +13,17 @@ const LoginPage = () => {
     try {
       const success = await login(provider);
       if (success) {
-        navigate('/dashboard');
+        // Navigate to create profile for new user experience
+        navigate('/sunshines/create');
       }
     } catch (error) {
       console.error('Login error:', error);
+      // For OAuth, login() might redirect to OAuth provider
+      // In that case, no error is thrown but success is null
+      if (!success && error?.message !== 'OAuth redirect') {
+        // Show error to user
+        alert('Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

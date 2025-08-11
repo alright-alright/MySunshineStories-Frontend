@@ -1,123 +1,237 @@
-# Frontend Deployment Guide for Railway
+# Deployment Guide
 
-## Overview
-This guide explains how to deploy the MySunshineStory frontend to Railway and configure the custom domain.
+## Repository Structure
 
-## Prerequisites
-- Railway account (https://railway.app)
-- Access to GitHub repository
-- Domain DNS management access for mysunshinestory.ai
+MySunshineTales is split into two separate repositories for independent deployment:
 
-## Deployment Steps
+- **Frontend**: [MySunshineStories-Frontend](https://github.com/alright-alright/MySunshineStories-Frontend)
+- **Backend**: [MySunshineStories-Backend](https://github.com/alright-alright/MySunshineStories-Backend)
 
-### 1. Create New Railway Service
+## Frontend Deployment (Vercel)
 
-1. Log in to Railway Dashboard
-2. Click "New Project"
-3. Select "Deploy from GitHub repo"
-4. Choose the `LucianTales` repository
-5. Configure deployment settings:
-   - **Root Directory**: `/frontend`
-   - **Branch**: `main`
+### 1. Prerequisites
+- Vercel account
+- GitHub repository connected
+- Backend API deployed and accessible
 
-### 2. Set Environment Variables
+### 2. Environment Variables
 
-In Railway service settings, add these environment variables:
+Configure these in Vercel dashboard under Settings → Environment Variables:
+
+| Variable | Description | Required | Example |
+|----------|-------------|----------|---------|
+| `VITE_API_URL` | Backend API URL | ✅ Yes | `https://api.mysunshinestories.com` |
+| `VITE_GOOGLE_CLIENT_ID` | Google OAuth Client ID | ❌ No | `123456.apps.googleusercontent.com` |
+| `VITE_APPLE_CLIENT_ID` | Apple OAuth Client ID | ❌ No | `com.example.signin` |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key | ❌ No | `pk_live_xxxxx` |
+
+### 3. Deployment Commands
 
 ```bash
-VITE_API_URL=https://luciantales-production.up.railway.app
-VITE_APP_URL=https://mysunshinestory.ai
-VITE_GOOGLE_CLIENT_ID=<your_google_oauth_client_id>
-VITE_APPLE_CLIENT_ID=<your_apple_oauth_client_id>
-PORT=<auto-assigned by Railway>
+# Install Vercel CLI
+npm i -g vercel
+
+# Login to Vercel
+vercel login
+
+# Deploy to production
+vercel --prod
+
+# Deploy to preview
+vercel
 ```
 
-### 3. Deploy the Service
+### 4. Domain Configuration
 
-Railway will automatically:
-1. Detect the Node.js application
-2. Install dependencies with `npm ci`
-3. Run the build command `npm run build`
-4. Start the server with `npm run start`
+1. Go to Vercel Dashboard → Settings → Domains
+2. Add your custom domain (e.g., mysunshinestories.com)
+3. Configure DNS records as instructed by Vercel
+4. SSL certificate is automatically provisioned
 
-### 4. Configure Custom Domain
+## Backend Deployment (Railway)
 
-#### In Railway:
-1. Go to service Settings → Domains
-2. Add custom domain: `mysunshinestory.ai`
-3. Add www subdomain: `www.mysunshinestory.ai`
-4. Railway will provide DNS records
+### 1. Prerequisites
+- Railway account
+- GitHub repository connected
+- PostgreSQL database service added
 
-#### In Your DNS Provider:
-Add these records:
+### 2. Environment Variables
 
-**For root domain (mysunshinestory.ai):**
+Configure these in Railway dashboard:
+
+| Variable | Description | Required | Example |
+|----------|-------------|----------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | ✅ Yes | Auto-provided by Railway |
+| `SECRET_KEY` | JWT signing key | ✅ Yes | Generate with `openssl rand -hex 32` |
+| `OPENAI_API_KEY` | OpenAI API key | ✅ Yes | `sk-xxxxx` |
+| `ALLOWED_ORIGINS` | CORS allowed origins | ✅ Yes | `https://mysunshinestories.com` |
+| `STRIPE_SECRET_KEY` | Stripe secret key | ❌ No | `sk_live_xxxxx` |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret | ❌ No | `whsec_xxxxx` |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID | ❌ No | Same as frontend |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth secret | ❌ No | `xxxxx` |
+| `APPLE_CLIENT_ID` | Apple OAuth client ID | ❌ No | Same as frontend |
+| `APPLE_CLIENT_SECRET` | Apple OAuth secret | ❌ No | `xxxxx` |
+
+### 3. Database Migration
+
+Railway will automatically run migrations on deploy if you have this in your `railway.json`:
+
+```json
+{
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+  }
+}
 ```
-Type: A
-Name: @
-Value: <Railway-provided IP>
+
+## OAuth Setup
+
+### Google OAuth
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create new project or select existing
+3. Enable Google+ API
+4. Create OAuth 2.0 Client ID
+5. Add authorized redirect URIs:
+   - `https://mysunshinestories.com/auth/google/callback`
+   - `http://localhost:5173/auth/google/callback` (for development)
+
+### Apple Sign In
+
+1. Go to [Apple Developer Portal](https://developer.apple.com)
+2. Create App ID with Sign In with Apple capability
+3. Create Service ID for web authentication
+4. Configure domains and redirect URLs:
+   - Domain: `mysunshinestories.com`
+   - Redirect: `https://mysunshinestories.com/auth/apple/callback`
+
+## Stripe Configuration
+
+### 1. Create Products and Prices
+
+```bash
+# Monthly subscription
+stripe products create \
+  --name="MySunshineTales Monthly" \
+  --description="Monthly subscription for unlimited stories"
+
+stripe prices create \
+  --product=prod_xxx \
+  --unit-amount=999 \
+  --currency=usd \
+  --recurring[interval]=month
 ```
 
-**For www subdomain:**
+### 2. Configure Webhooks
+
+1. Go to Stripe Dashboard → Webhooks
+2. Add endpoint: `https://api.mysunshinestories.com/api/v1/webhooks/stripe`
+3. Select events:
+   - `checkout.session.completed`
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+
+### 3. Update Environment Variables
+
+Add the webhook secret and price IDs to your backend environment.
+
+## Monitoring & Logs
+
+### Frontend (Vercel)
+- View logs: Vercel Dashboard → Functions → Logs
+- Monitor performance: Vercel Analytics
+- Error tracking: Integrate with Sentry
+
+### Backend (Railway)
+- View logs: Railway Dashboard → Deployments → View Logs
+- Monitor metrics: Railway Dashboard → Metrics
+- Database monitoring: Railway PostgreSQL metrics
+
+## Troubleshooting
+
+### Common Issues
+
+1. **CORS Errors**
+   - Verify `ALLOWED_ORIGINS` includes your frontend URL
+   - Check no trailing slashes in URLs
+
+2. **OAuth Not Working**
+   - Verify redirect URIs match exactly
+   - Check client IDs are correct in both frontend and backend
+   - Ensure secrets are only in backend
+
+3. **Database Connection Issues**
+   - Check `DATABASE_URL` is correct
+   - Verify database is running
+   - Check connection pool settings
+
+4. **Stripe Webhooks Failing**
+   - Verify webhook secret is correct
+   - Check endpoint URL is accessible
+   - Review Stripe webhook logs
+
+### Debug Mode
+
+Enable detailed logging:
+
+**Frontend (.env)**:
+```env
+VITE_DEBUG=true
 ```
-Type: CNAME
-Name: www
-Value: <Railway-provided domain>.up.railway.app
+
+**Backend (.env)**:
+```env
+DEBUG=true
+LOG_LEVEL=DEBUG
 ```
 
-**Alternative using CNAME flattening (if supported):**
-```
-Type: CNAME
-Name: @
-Value: <Railway-provided domain>.up.railway.app
-```
+## Rollback Strategy
 
-### 5. Update Backend CORS
-
-Ensure the backend at `https://luciantales-production.up.railway.app` has CORS configured for:
-- `https://mysunshinestory.ai`
-- `https://www.mysunshinestory.ai`
-
-### 6. SSL Configuration
-
-Railway automatically provisions SSL certificates via Let's Encrypt for custom domains.
-
-## Post-Deployment Checklist
-
-- [ ] Frontend accessible at https://mysunshinestory.ai
-- [ ] www redirect working
-- [ ] OAuth login functional
-- [ ] API calls to backend working
-- [ ] Images and assets loading correctly
-- [ ] SSL certificate active
-
-## Monitoring
-
-- Check Railway logs: `railway logs`
-- Monitor deployments in Railway dashboard
-- Set up health checks for uptime monitoring
-
-## Rollback Procedure
-
-If issues occur:
-1. In Railway dashboard, go to Deployments
+### Vercel (Frontend)
+1. Go to Deployments tab
 2. Find previous working deployment
-3. Click "Rollback" to restore
+3. Click "..." → "Promote to Production"
 
-## Local Testing of Production Build
+### Railway (Backend)
+1. Go to Deployments tab
+2. Find previous working deployment
+3. Click "Rollback"
 
-```bash
-# Build locally
-npm run build
+## Performance Optimization
 
-# Test production build
-npm run preview
+### Frontend
+- Enable Vercel Edge Network
+- Use image optimization
+- Implement code splitting
+- Enable caching headers
 
-# Access at http://localhost:4173
-```
+### Backend
+- Use connection pooling
+- Implement Redis caching
+- Optimize database queries
+- Use CDN for static assets
+
+## Security Checklist
+
+- [ ] All secrets in environment variables
+- [ ] HTTPS enabled on all domains
+- [ ] CORS properly configured
+- [ ] Rate limiting implemented
+- [ ] Input validation on all endpoints
+- [ ] SQL injection prevention
+- [ ] XSS protection headers
+- [ ] CSRF tokens for state-changing operations
+- [ ] Regular dependency updates
+- [ ] Security headers configured
 
 ## Support
 
-- Railway Documentation: https://docs.railway.app
-- Railway Discord: https://discord.gg/railway
-- GitHub Issues: https://github.com/alright-alright/LucianTales/issues
+For deployment issues:
+- Frontend: Check Vercel status page
+- Backend: Check Railway status page
+- Create issue on GitHub
+- Contact: support@mysunshinestories.com
