@@ -36,8 +36,6 @@ function App() {
               {/* Public routes - OAuth callbacks MUST be outside protected routes */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/oauth-diagnostic" element={<OAuthDiagnostic />} />
-              <Route path="/auth/google/callback" element={<OAuthCallback />} />
-              <Route path="/auth/apple/callback" element={<OAuthCallback />} />
               <Route path="/auth/:provider/callback" element={<OAuthCallback />} />
               
               {/* Protected routes with Navigation wrapper */}

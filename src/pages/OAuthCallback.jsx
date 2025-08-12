@@ -14,6 +14,13 @@ const OAuthCallback = () => {
       const code = searchParams.get('code');
       const error = searchParams.get('error');
 
+      // Validate provider parameter
+      if (!provider || !['google', 'apple'].includes(provider.toLowerCase())) {
+        console.error('Invalid OAuth provider:', provider);
+        navigate('/login');
+        return;
+      }
+
       if (error) {
         console.error('OAuth error:', error);
         navigate('/login');
@@ -21,13 +28,22 @@ const OAuthCallback = () => {
       }
 
       if (code) {
-        const success = await handleOAuthCallback(provider, code);
+        console.log('Processing OAuth callback:', {
+          provider: provider.toLowerCase(),
+          code: code.substring(0, 20) + '...',
+          redirectUri: `${window.location.origin}/auth/${provider.toLowerCase()}/callback`
+        });
+        
+        const success = await handleOAuthCallback(provider.toLowerCase(), code);
         if (success) {
           // CEO wants users to go directly to create profile after OAuth
           navigate('/sunshines/create');
         } else {
           navigate('/login');
         }
+      } else {
+        console.error('No authorization code received');
+        navigate('/login');
       }
     };
 

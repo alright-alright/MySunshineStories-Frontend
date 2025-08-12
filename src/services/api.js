@@ -150,9 +150,22 @@ export const authAPI = {
   // Handle OAuth callback
   handleCallback: async (provider, code) => {
     try {
-      const redirectUri = `${window.location.origin}/auth/${provider}/callback`;
+      // Ensure provider is lowercase and valid
+      const normalizedProvider = provider?.toLowerCase();
+      if (!normalizedProvider || !['google', 'apple'].includes(normalizedProvider)) {
+        throw new Error(`Invalid OAuth provider: ${provider}`);
+      }
+      
+      const redirectUri = `${window.location.origin}/auth/${normalizedProvider}/callback`;
+      
+      console.log('Sending OAuth exchange request:', {
+        provider: normalizedProvider,
+        code: code.substring(0, 20) + '...',
+        redirect_uri: redirectUri
+      });
+      
       const response = await api.post('/api/v1/auth/oauth/exchange', {
-        provider,
+        provider: normalizedProvider,
         code,
         redirect_uri: redirectUri
       });
