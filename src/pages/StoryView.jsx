@@ -27,55 +27,95 @@ const StoryView = () => {
       .replace(/\\'/g, "'") // Fix escaped single quotes
       .replace(/\\"/g, '"') // Fix escaped double quotes
       .replace(/\\t/g, '  ') // Convert tabs to spaces
+      .replace(/\\/g, '') // Remove remaining backslashes
       .trim();
     
-    // Step 2: Remove any remaining JSON-like structures
-    cleanContent = cleanContent.replace(/^\s*[\[\{].*?[\]\}]\s*$/gm, '');
+    // Step 2: Remove scene references and technical markers
+    cleanContent = cleanContent
+      .replace(/\*\*Scene \d+:.*?\*\*/gi, '') // Remove **Scene X: Title** markers
+      .replace(/Scene \d+:.*?\n/gi, '') // Remove Scene X: markers
+      .replace(/In the (first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth) scene[,:]?\s*/gi, '') // Remove scene references
+      .replace(/\(Scene \d+\)/gi, '') // Remove (Scene X) markers
+      .replace(/^\s*\d+\.\s+/gm, '') // Remove numbered list markers
+      .replace(/^\s*[-*]\s+/gm, '') // Remove bullet points
+      .replace(/\[Scene:.*?\]/gi, '') // Remove [Scene: ...] markers
+      .replace(/\{scene:.*?\}/gi, ''); // Remove {scene: ...} markers
     
-    // Step 3: Split into sentences for better paragraph formation
-    // First split by double newlines (explicit paragraphs)
+    // Step 3: Remove any remaining JSON-like structures more aggressively
+    cleanContent = cleanContent
+      .replace(/^\s*[\[\{].*?[\]\}]\s*$/gm, '') // Remove lines that are just JSON
+      .replace(/\{[^}]*\}/g, '') // Remove inline JSON objects
+      .replace(/\[[^\]]*\]/g, '') // Remove inline JSON arrays
+      .replace(/["']?(title|story|content|scene\d+)["']?\s*:\s*/gi, ''); // Remove JSON keys
+    
+    // Step 4: Clean up spacing and normalize line breaks
+    cleanContent = cleanContent
+      .replace(/\n{3,}/g, '\n\n') // Normalize multiple line breaks to double
+      .replace(/\s{2,}/g, ' ') // Normalize multiple spaces to single
+      .replace(/^\s+|\s+$/gm, '') // Trim each line
+      .trim();
+    
+    // Step 5: Split into paragraphs more intelligently
     let paragraphs = cleanContent.split(/\n{2,}/);
     
-    // If we only have one giant paragraph, split by sentences
-    if (paragraphs.length === 1 && paragraphs[0].length > 500) {
-      const sentences = paragraphs[0].match(/[^.!?]+[.!?]+/g) || [paragraphs[0]];
-      paragraphs = [];
-      let currentParagraph = '';
-      
-      sentences.forEach((sentence, index) => {
-        currentParagraph += sentence.trim() + ' ';
-        // Create new paragraph every 2-4 sentences or at natural breaks
-        if ((index + 1) % 3 === 0 || 
-            sentence.includes('Once upon') || 
-            sentence.includes('One day') || 
-            sentence.includes('The next') ||
-            sentence.includes('Finally') ||
-            sentence.includes('In the end') ||
-            sentence.includes('After that')) {
-          if (currentParagraph.trim()) {
-            paragraphs.push(currentParagraph.trim());
-            currentParagraph = '';
+    // If we still have giant paragraphs, split them
+    paragraphs = paragraphs.flatMap(para => {
+      if (para.length > 400) {
+        // Split long paragraphs by sentences
+        const sentences = para.match(/[^.!?]+[.!?]+/g) || [para];
+        const subParagraphs = [];
+        let currentPara = '';
+        
+        sentences.forEach((sentence, index) => {
+          const cleanSentence = sentence.trim();
+          
+          // Skip sentences that are just scene markers
+          if (cleanSentence.match(/^(Scene|In the|The scene)/i)) {
+            return;
           }
+          
+          currentPara += cleanSentence + ' ';
+          
+          // Create new paragraph every 2-3 sentences or at natural breaks
+          const isNaturalBreak = cleanSentence.match(/(Once upon|One day|Meanwhile|Later|The next|Finally|In the end|After|Before|Suddenly|Then,)/i);
+          const isSentenceBreak = (currentPara.match(/[.!?]/g) || []).length >= 2;
+          
+          if (isNaturalBreak || isSentenceBreak) {
+            if (currentPara.trim()) {
+              subParagraphs.push(currentPara.trim());
+              currentPara = '';
+            }
+          }
+        });
+        
+        // Add remaining content
+        if (currentPara.trim()) {
+          subParagraphs.push(currentPara.trim());
         }
-      });
-      
-      // Add any remaining content
-      if (currentParagraph.trim()) {
-        paragraphs.push(currentParagraph.trim());
+        
+        return subParagraphs;
       }
-    }
+      return [para];
+    });
     
-    // Step 4: Clean and filter paragraphs
+    // Step 6: Final cleanup and filtering
     return paragraphs
-      .map(p => p.trim())
+      .map(p => {
+        // Final cleanup of each paragraph
+        return p
+          .replace(/^\s*["']\s*|\s*["']\s*$/g, '') // Remove leading/trailing quotes
+          .replace(/\s+/g, ' ') // Normalize spaces
+          .trim();
+      })
       .filter(p => {
-        // Remove empty paragraphs and JSON artifacts
+        // Remove empty paragraphs, JSON artifacts, and scene markers
         return p && 
-               p.length > 10 && 
-               !p.startsWith('{') && 
-               !p.startsWith('[') &&
-               !p.match(/^\s*[\{\[]/) &&
-               !p.includes('```');
+               p.length > 20 && // Minimum paragraph length
+               !p.match(/^\s*[\{\[\("']/) && // No JSON or quote starts
+               !p.match(/^(Scene|In the.*scene)/i) && // No scene markers
+               !p.includes('```') && // No code blocks
+               !p.match(/^\s*\d+\s*$/) && // No lone numbers
+               !p.match(/^["']*\s*:\s*["']*$/); // No lone colons
       });
   };
 
