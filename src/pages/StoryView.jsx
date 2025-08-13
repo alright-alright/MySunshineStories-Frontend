@@ -20,10 +20,16 @@ const StoryView = () => {
     try {
       setLoading(true);
       const data = await storyAPI.getStory(id);
+      
+      // DEBUG: Verify field mapping worked
+      console.log('✅ Story loaded successfully');
+      console.log('✅ Content field exists:', !!data?.content);
+      console.log('✅ Content length:', data?.content?.length || 0);
+      
       setStory(data);
     } catch (err) {
       setError('Failed to load story');
-      console.error(err);
+      console.error('❌ Error fetching story:', err);
     } finally {
       setLoading(false);
     }
@@ -31,10 +37,10 @@ const StoryView = () => {
 
   const handleDownload = () => {
     // Create a downloadable version of the story
-    const title = story.title || 'Untitled Story';
-    const content = story.content || 'Story content not available';
-    const sunshineName = story.sunshine_name || 'Your Sunshine';
-    const createdAt = story.created_at ? new Date(story.created_at).toLocaleDateString() : new Date().toLocaleDateString();
+    const title = story?.title || 'Untitled Story';
+    const content = story?.content || story?.story_text || story?.story || 'Story content not available';
+    const sunshineName = story?.sunshine_name || story?.child_name || 'Your Sunshine';
+    const createdAt = story?.created_at ? new Date(story.created_at).toLocaleDateString() : new Date().toLocaleDateString();
     
     const storyContent = `${title}\n\n${content}\n\n---\nGenerated for ${sunshineName} on ${createdAt}`;
     const blob = new Blob([storyContent], { type: 'text/plain' });
@@ -148,7 +154,7 @@ const StoryView = () => {
           <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-6 overflow-y-auto" style={{ height: '400px' }}>
             <h3 className="text-2xl font-bold text-gray-800 mb-4">{story.title || 'Untitled Story'}</h3>
             <div className="space-y-3 text-gray-700">
-              {story.content ? (
+              {story?.content ? (
                 <>
                   {story.content.split('\n\n').slice(0, 5).map((paragraph, index) => (
                     <p key={index} className="leading-relaxed">
@@ -160,7 +166,7 @@ const StoryView = () => {
                   )}
                 </>
               ) : (
-                <p className="text-gray-500 italic">Story content is being generated...</p>
+                <p className="text-gray-500 italic">Story content is loading...</p>
               )}
             </div>
           </div>
@@ -205,14 +211,14 @@ const StoryView = () => {
             </div>
             <div className="flex-1 overflow-y-auto p-8 bg-gradient-to-br from-yellow-50 to-white">
               <div className="prose prose-lg max-w-none">
-                {story.content ? (
+                {story?.content ? (
                   story.content.split('\n\n').map((paragraph, index) => (
                     <p key={index} className="mb-4 text-gray-700 leading-relaxed">
                       {paragraph}
                     </p>
                   ))
                 ) : (
-                  <p className="text-gray-500 italic">Story content is being generated...</p>
+                  <p className="text-gray-500 italic">Story content is loading...</p>
                 )}
               </div>
             </div>
@@ -285,14 +291,14 @@ const StoryView = () => {
         {/* Story Text */}
         <div className="p-8">
           <div className="prose prose-lg max-w-none">
-            {story.content ? (
+            {story?.content ? (
               story.content.split('\n\n').map((paragraph, index) => (
                 <p key={index} className="mb-4 text-gray-700 leading-relaxed">
                   {paragraph}
                 </p>
               ))
             ) : (
-              <p className="text-gray-500 italic">Story content is being generated...</p>
+              <p className="text-gray-500 italic">Story content is loading...</p>
             )}
           </div>
 

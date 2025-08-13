@@ -275,7 +275,16 @@ export const storyAPI = {
   // Generate story (v2 - profile based)
   generateStory: async (data) => {
     const response = await api.post('/api/v2/stories/generate', data);
-    return response.data;
+    const story = response.data;
+    
+    // CRITICAL: Backend uses story_text, not content
+    return {
+      ...story,
+      content: story.story_text || story.content || '',
+      story_text: story.story_text || story.content || '',
+      sunshine_name: story.sunshine_name || story.child_name || data.sunshine_name || 'Your Sunshine',
+      title: story.title || 'Generated Story'
+    };
   },
   
   // Generate enhanced story with photos (v3)
@@ -285,7 +294,16 @@ export const storyAPI = {
         'Content-Type': 'multipart/form-data',
       },
     });
-    return response.data;
+    const story = response.data;
+    
+    // CRITICAL: Backend uses story_text, not content
+    return {
+      ...story,
+      content: story.story_text || story.content || '',
+      story_text: story.story_text || story.content || '',
+      sunshine_name: story.sunshine_name || story.child_name || 'Your Sunshine',
+      title: story.title || 'Generated Story'
+    };
   },
   
   // Get story history
@@ -293,23 +311,48 @@ export const storyAPI = {
     const response = await api.get('/api/v2/stories/history', {
       params: { limit, offset }
     });
-    return response.data;
+    
+    // CRITICAL: Backend uses story_text field
+    const stories = Array.isArray(response.data) ? response.data : [];
+    return stories.map(story => ({
+      ...story,
+      content: story.story_text || story.content || '',
+      story_text: story.story_text || story.content || '',
+      sunshine_name: story.sunshine_name || story.child_name || story.name || 'Your Sunshine',
+      title: story.title || 'Untitled Story'
+    }));
   },
   
   // Get single story
   getStory: async (id) => {
     const response = await api.get(`/api/v2/stories/${id}`);
-    // Ensure story data has required fields with fallbacks
     const story = response.data;
-    return {
+    
+    // DEBUG: Log what the backend actually returns
+    console.log('🎯 Backend Response - Available fields:', Object.keys(story || {}));
+    console.log('🎯 story.story_text exists?', 'story_text' in story);
+    console.log('🎯 story.content exists?', 'content' in story);
+    console.log('🎯 Full response:', story);
+    
+    // CRITICAL FIX: Backend uses story_text, frontend expects content
+    const normalizedStory = {
       ...story,
+      // Map story_text to content (backend uses story_text!)
+      content: story.story_text || story.content || '',
+      // Keep original story_text for compatibility
+      story_text: story.story_text || story.content || '',
+      // Normalize other fields
       title: story.title || 'Untitled Story',
-      content: story.content || '',
       sunshine_name: story.sunshine_name || story.child_name || 'Your Sunshine',
-      fear_or_challenge: story.fear_or_challenge || null,
+      fear_or_challenge: story.fear_or_challenge || story.theme || null,
       tone: story.tone || 'Whimsical',
       created_at: story.created_at || new Date().toISOString()
     };
+    
+    console.log('✅ Fixed mapping - content field:', normalizedStory.content ? 'Has content' : 'No content');
+    console.log('✅ Content preview:', normalizedStory.content?.substring(0, 100));
+    
+    return normalizedStory;
   },
   
   // Toggle favorite
