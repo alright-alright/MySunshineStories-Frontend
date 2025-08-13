@@ -11,6 +11,73 @@ const StoryView = () => {
   const [error, setError] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isVideoFullScreen, setIsVideoFullScreen] = useState(false);
+  
+  // Enhanced text formatting function
+  const formatStoryContent = (content) => {
+    if (!content) return [];
+    
+    // Step 1: Clean JSON artifacts and escape sequences
+    let cleanContent = content
+      .replace(/^```json\s*/gi, '') // Remove json code blocks at start
+      .replace(/```json/gi, '') // Remove any json markers
+      .replace(/```/g, '') // Remove code block markers
+      .replace(/^\s*{[^}]*"story":\s*"/s, '') // Remove JSON wrapper if present
+      .replace(/"\s*}\s*$/s, '') // Remove closing JSON
+      .replace(/\\n/g, '\n') // Convert escaped newlines to real newlines
+      .replace(/\\'/g, "'") // Fix escaped single quotes
+      .replace(/\\"/g, '"') // Fix escaped double quotes
+      .replace(/\\t/g, '  ') // Convert tabs to spaces
+      .trim();
+    
+    // Step 2: Remove any remaining JSON-like structures
+    cleanContent = cleanContent.replace(/^\s*[\[\{].*?[\]\}]\s*$/gm, '');
+    
+    // Step 3: Split into sentences for better paragraph formation
+    // First split by double newlines (explicit paragraphs)
+    let paragraphs = cleanContent.split(/\n{2,}/);
+    
+    // If we only have one giant paragraph, split by sentences
+    if (paragraphs.length === 1 && paragraphs[0].length > 500) {
+      const sentences = paragraphs[0].match(/[^.!?]+[.!?]+/g) || [paragraphs[0]];
+      paragraphs = [];
+      let currentParagraph = '';
+      
+      sentences.forEach((sentence, index) => {
+        currentParagraph += sentence.trim() + ' ';
+        // Create new paragraph every 2-4 sentences or at natural breaks
+        if ((index + 1) % 3 === 0 || 
+            sentence.includes('Once upon') || 
+            sentence.includes('One day') || 
+            sentence.includes('The next') ||
+            sentence.includes('Finally') ||
+            sentence.includes('In the end') ||
+            sentence.includes('After that')) {
+          if (currentParagraph.trim()) {
+            paragraphs.push(currentParagraph.trim());
+            currentParagraph = '';
+          }
+        }
+      });
+      
+      // Add any remaining content
+      if (currentParagraph.trim()) {
+        paragraphs.push(currentParagraph.trim());
+      }
+    }
+    
+    // Step 4: Clean and filter paragraphs
+    return paragraphs
+      .map(p => p.trim())
+      .filter(p => {
+        // Remove empty paragraphs and JSON artifacts
+        return p && 
+               p.length > 10 && 
+               !p.startsWith('{') && 
+               !p.startsWith('[') &&
+               !p.match(/^\s*[\{\[]/) &&
+               !p.includes('```');
+      });
+  };
 
   useEffect(() => {
     fetchStory();
@@ -159,17 +226,26 @@ const StoryView = () => {
           {/* Preview Content Box - 400px height as requested */}
           <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-6 overflow-y-auto" style={{ height: '400px' }}>
             <h3 className="text-2xl font-bold text-gray-800 mb-4">{story.title || 'Untitled Story'}</h3>
-            <div className="space-y-3 text-gray-700">
+            <div className="space-y-4 text-gray-700">
               {story?.content ? (
                 <>
-                  {story.content.split(/\n+/).filter(p => p.trim()).slice(0, 5).map((paragraph, index) => (
-                    <p key={index} className="leading-relaxed">
-                      {paragraph.trim()}
-                    </p>
-                  ))}
-                  {story.content.split(/\n+/).filter(p => p.trim()).length > 5 && (
-                    <p className="text-gray-500 italic mt-4">... Continue reading in full screen</p>
-                  )}
+                  {(() => {
+                    const paragraphs = formatStoryContent(story.content);
+                    const previewParagraphs = paragraphs.slice(0, 3);
+                    
+                    return (
+                      <>
+                        {previewParagraphs.map((paragraph, index) => (
+                          <p key={index} className="leading-relaxed text-base mb-4">
+                            {paragraph}
+                          </p>
+                        ))}
+                        {paragraphs.length > 3 && (
+                          <p className="text-gray-500 italic mt-4">... Continue reading in full screen</p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               ) : (
                 <p className="text-gray-500 italic">Story content is loading...</p>
@@ -218,9 +294,9 @@ const StoryView = () => {
             <div className="flex-1 overflow-y-auto p-8 bg-gradient-to-br from-yellow-50 to-white">
               <div className="prose prose-lg max-w-none">
                 {story?.content ? (
-                  story.content.split(/\n+/).filter(p => p.trim()).map((paragraph, index) => (
-                    <p key={index} className="mb-4 text-gray-700 leading-relaxed">
-                      {paragraph.trim()}
+                  formatStoryContent(story.content).map((paragraph, index) => (
+                    <p key={index} className="mb-6 text-gray-700 leading-relaxed text-lg">
+                      {paragraph}
                     </p>
                   ))
                 ) : (
@@ -283,24 +359,32 @@ const StoryView = () => {
           </div>
         </div>
 
-        {/* Story Illustration - Use image_urls[0] instead of illustration_url */}
-        {story.image_urls && story.image_urls[0] && (
-          <div className="p-8 bg-gradient-to-b from-yellow-50 to-white">
+        {/* Story Illustration - Display with proper fallback */}
+        <div className="p-8 bg-gradient-to-b from-yellow-50 to-white">
+          {(story.image_urls && story.image_urls[0]) || story.illustration_url ? (
             <img
-              src={story.image_urls[0]}
+              src={story.image_urls?.[0] || story.illustration_url}
               alt="Story illustration"
-              className="w-full max-w-2xl mx-auto rounded-xl shadow-md"
+              className="w-full max-w-2xl mx-auto rounded-xl shadow-md object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
             />
-          </div>
-        )}
+          ) : (
+            <div className="w-full max-w-2xl mx-auto rounded-xl bg-gradient-to-br from-yellow-100 to-orange-100 p-12 text-center">
+              <Sparkles className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+              <p className="text-gray-600 text-lg">Illustration coming soon</p>
+            </div>
+          )}
+        </div>
 
         {/* Story Text */}
         <div className="p-8">
           <div className="prose prose-lg max-w-none">
             {story?.content ? (
-              story.content.split(/\n+/).filter(p => p.trim()).map((paragraph, index) => (
-                <p key={index} className="mb-4 text-gray-700 leading-relaxed">
-                  {paragraph.trim()}
+              formatStoryContent(story.content).map((paragraph, index) => (
+                <p key={index} className="mb-6 text-gray-700 leading-relaxed text-lg">
+                  {paragraph}
                 </p>
               ))
             ) : (

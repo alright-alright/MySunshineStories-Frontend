@@ -334,13 +334,27 @@ export const storyAPI = {
     console.log('🎯 story.content exists?', 'content' in story);
     console.log('🎯 Full response:', story);
     
+    // Clean up content from GPT response artifacts
+    const cleanContent = (text) => {
+      if (!text) return '';
+      return text
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .replace(/^\{.*?"story":\s*"/s, '')  // Remove JSON wrapper if present
+        .replace(/"\s*\}$/s, '')  // Remove closing JSON if present
+        .replace(/\\n/g, '\n')  // Convert escaped newlines
+        .replace(/\\'/g, "'")  // Convert escaped quotes
+        .replace(/\\"/g, '"')  // Convert escaped double quotes
+        .trim();
+    };
+    
     // CRITICAL FIX: Backend uses story_text, frontend expects content
     const normalizedStory = {
       ...story,
-      // Map story_text to content (backend uses story_text!)
-      content: story.story_text || story.content || '',
+      // Map story_text to content (backend uses story_text!) and clean it
+      content: cleanContent(story.story_text || story.content || ''),
       // Keep original story_text for compatibility
-      story_text: story.story_text || story.content || '',
+      story_text: cleanContent(story.story_text || story.content || ''),
       // Normalize other fields
       title: story.title || 'Untitled Story',
       sunshine_name: story.sunshine_name || story.child_name || 'Your Sunshine',
