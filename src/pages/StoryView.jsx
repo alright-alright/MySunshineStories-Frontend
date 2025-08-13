@@ -11,76 +11,6 @@ const StoryView = () => {
   const [error, setError] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isVideoFullScreen, setIsVideoFullScreen] = useState(false);
-  
-  // SIMPLE text formatting - just display story_text cleanly
-  const formatStoryContent = (content) => {
-    if (!content) return [];
-    
-    // The backend sends clean story_text - we just need to format it into paragraphs
-    console.log('📖 Formatting story_text for display');
-    
-    // Basic cleanup - story_text is already clean from backend
-    let cleanContent = content
-      .replace(/\\n/g, '\n') // Convert any escaped newlines
-      .replace(/\\'/g, "'") // Fix any escaped quotes
-      .replace(/\\"/g, '"')
-      .replace(/\\t/g, ' ')
-      .trim();
-    
-    // Split into paragraphs - try double newlines first
-    let paragraphs = cleanContent.split(/\n{2,}/);
-    
-    // If no double newlines, try single newlines
-    if (paragraphs.length === 1) {
-      paragraphs = cleanContent.split(/\n+/);
-    }
-    
-    // If still one big block, split by sentences
-    if (paragraphs.length === 1 && cleanContent.length > 300) {
-      const sentences = cleanContent.match(/[^.!?]+[.!?]+/g) || [cleanContent];
-      paragraphs = [];
-      let currentPara = '';
-      let sentenceCount = 0;
-      
-      sentences.forEach((sentence) => {
-        const clean = sentence.trim();
-        currentPara += (currentPara ? ' ' : '') + clean;
-        sentenceCount++;
-        
-        // Create paragraph every 3 sentences or at natural story breaks
-        const hasNaturalBreak = clean.match(
-          /(Once upon a time|One day|The next day|Meanwhile|Later|Finally|In the end|After that|Eventually|Suddenly)/i
-        );
-        
-        if (hasNaturalBreak || sentenceCount >= 3) {
-          if (currentPara.trim()) {
-            paragraphs.push(currentPara.trim());
-            currentPara = '';
-            sentenceCount = 0;
-          }
-        }
-      });
-      
-      // Add remaining content
-      if (currentPara.trim()) {
-        paragraphs.push(currentPara.trim());
-      }
-    }
-    
-    // Clean up and filter paragraphs
-    const finalParagraphs = paragraphs
-      .map(p => p.trim())
-      .filter(p => p && p.length > 20); // Keep meaningful paragraphs
-    
-    console.log('📖 Story ready:', finalParagraphs.length, 'paragraphs');
-    
-    // Fallback - if no paragraphs, return content as is
-    if (finalParagraphs.length === 0 && content) {
-      return [content];
-    }
-    
-    return finalParagraphs;
-  };
 
   useEffect(() => {
     fetchStory();
@@ -232,23 +162,19 @@ const StoryView = () => {
             <div className="space-y-4 text-gray-700">
               {story?.content ? (
                 <>
-                  {(() => {
-                    const paragraphs = formatStoryContent(story.content);
-                    const previewParagraphs = paragraphs.slice(0, 3);
-                    
-                    return (
-                      <>
-                        {previewParagraphs.map((paragraph, index) => (
-                          <p key={index} className="leading-relaxed text-base mb-4">
-                            {paragraph}
-                          </p>
-                        ))}
-                        {paragraphs.length > 3 && (
-                          <p className="text-gray-500 italic mt-4">... Continue reading in full screen</p>
-                        )}
-                      </>
-                    );
-                  })()}
+                  {story.content.split(/(?<=[.!?])\s+(?=[A-Z])/).reduce((acc, sentence, i) => {
+                    const paraIndex = Math.floor(i / 3);
+                    if (!acc[paraIndex]) acc[paraIndex] = '';
+                    acc[paraIndex] += sentence + ' ';
+                    return acc;
+                  }, []).map(p => p.trim()).slice(0, 3).map((paragraph, index) => (
+                    <p key={index} className="leading-relaxed text-base mb-4">
+                      {paragraph}
+                    </p>
+                  ))}
+                  {story.content.split(/(?<=[.!?])\s+(?=[A-Z])/).length > 9 && (
+                    <p className="text-gray-500 italic mt-4">... Continue reading in full screen</p>
+                  )}
                 </>
               ) : (
                 <p className="text-gray-500 italic">Story content is loading...</p>
@@ -297,7 +223,12 @@ const StoryView = () => {
             <div className="flex-1 overflow-y-auto p-8 bg-gradient-to-br from-yellow-50 to-white">
               <div className="prose prose-lg max-w-none">
                 {story?.content ? (
-                  formatStoryContent(story.content).map((paragraph, index) => (
+                  story.content.split(/(?<=[.!?])\s+(?=[A-Z])/).reduce((acc, sentence, i) => {
+                    const paraIndex = Math.floor(i / 3);
+                    if (!acc[paraIndex]) acc[paraIndex] = '';
+                    acc[paraIndex] += sentence + ' ';
+                    return acc;
+                  }, []).map(p => p.trim()).map((paragraph, index) => (
                     <p key={index} className="mb-6 text-gray-700 leading-relaxed text-lg">
                       {paragraph}
                     </p>
@@ -385,7 +316,12 @@ const StoryView = () => {
         <div className="p-8">
           <div className="prose prose-lg max-w-none">
             {story?.content ? (
-              formatStoryContent(story.content).map((paragraph, index) => (
+              story.content.split(/(?<=[.!?])\s+(?=[A-Z])/).reduce((acc, sentence, i) => {
+                const paraIndex = Math.floor(i / 3);
+                if (!acc[paraIndex]) acc[paraIndex] = '';
+                acc[paraIndex] += sentence + ' ';
+                return acc;
+              }, []).map(p => p.trim()).map((paragraph, index) => (
                 <p key={index} className="mb-6 text-gray-700 leading-relaxed text-lg">
                   {paragraph}
                 </p>
