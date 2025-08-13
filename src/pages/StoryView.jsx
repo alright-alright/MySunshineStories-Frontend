@@ -12,128 +12,74 @@ const StoryView = () => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isVideoFullScreen, setIsVideoFullScreen] = useState(false);
   
-  // Enhanced text formatting function - AGGRESSIVE CLEANING
+  // SIMPLE text formatting - just display story_text cleanly
   const formatStoryContent = (content) => {
     if (!content) return [];
     
-    console.log('📖 Starting text cleaning...');
+    // The backend sends clean story_text - we just need to format it into paragraphs
+    console.log('📖 Formatting story_text for display');
     
-    // Step 1: Remove ALL JSON structures and scene markers AGGRESSIVELY
+    // Basic cleanup - story_text is already clean from backend
     let cleanContent = content
-      // Remove code blocks
-      .replace(/```json[\s\S]*?```/gi, '')
-      .replace(/```[\s\S]*?```/g, '')
-      // Remove scene references - ALL variations
-      .replace(/In the (first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|final) scene[,:]?/gi, '')
-      .replace(/Scene \d+:.*?(?=\.|$)/gi, '')
-      .replace(/\*\*Scene.*?\*\*/gi, '')
-      .replace(/\(Scene \d+\)/gi, '')
-      .replace(/Scene number \d+/gi, '')
-      .replace(/scene_number['":\s]+\d+/gi, '')
-      // Remove JSON keys and structures
-      .replace(/"scene_\d+":\s*{[^}]*}/gi, '')
-      .replace(/"description":\s*"[^"]*"/gi, '')
-      .replace(/"dialogue":\s*"[^"]*"/gi, '')
-      .replace(/"action":\s*"[^"]*"/gi, '')
-      .replace(/"setting":\s*"[^"]*"/gi, '')
-      .replace(/\{"scene":[^}]*\}/gi, '')
-      .replace(/\["scene",[^]]*\]/gi, '')
-      // Remove any JSON-like patterns
-      .replace(/\{[^{}]*"[^"]*"[^{}]*\}/g, '')
-      .replace(/\[[^\[\]]*\]/g, '')
-      .replace(/"[^"]*":\s*"[^"]*",?/g, '')
-      .replace(/^\s*[{}[\],]\s*$/gm, '')
-      // Clean escape sequences
-      .replace(/\\n/g, '\n')
-      .replace(/\\'/g, "'")
+      .replace(/\\n/g, '\n') // Convert any escaped newlines
+      .replace(/\\'/g, "'") // Fix any escaped quotes
       .replace(/\\"/g, '"')
       .replace(/\\t/g, ' ')
-      .replace(/\\\\/g, '\\');
+      .trim();
     
-    // Step 2: Extract ONLY narrative text (sentences that tell the story)
-    // Split by sentences and filter
-    const sentences = cleanContent.match(/[^.!?]+[.!?]+/g) || [];
-    const narrativeSentences = sentences.filter(sentence => {
-      const s = sentence.trim();
-      // Keep only sentences that are actual story narrative
-      return s.length > 20 && 
-             !s.match(/^(scene|description|dialogue|action|setting)/i) &&
-             !s.includes('{') && 
-             !s.includes('}') &&
-             !s.includes('[') &&
-             !s.includes(']') &&
-             !s.includes('"scene') &&
-             !s.includes('scene_number') &&
-             !s.match(/^\d+\.?\s*$/) &&
-             !s.match(/^["',:]+$/);
-    });
+    // Split into paragraphs - try double newlines first
+    let paragraphs = cleanContent.split(/\n{2,}/);
     
-    // Step 3: Create paragraphs from clean sentences
-    const paragraphs = [];
-    let currentPara = '';
-    let sentenceCount = 0;
+    // If no double newlines, try single newlines
+    if (paragraphs.length === 1) {
+      paragraphs = cleanContent.split(/\n+/);
+    }
     
-    narrativeSentences.forEach((sentence, index) => {
-      const cleanSentence = sentence.trim()
-        .replace(/^\s*[,.:;]+/, '') // Remove leading punctuation
-        .replace(/\s+/g, ' '); // Normalize spaces
+    // If still one big block, split by sentences
+    if (paragraphs.length === 1 && cleanContent.length > 300) {
+      const sentences = cleanContent.match(/[^.!?]+[.!?]+/g) || [cleanContent];
+      paragraphs = [];
+      let currentPara = '';
+      let sentenceCount = 0;
       
-      if (!cleanSentence) return;
-      
-      currentPara += (currentPara ? ' ' : '') + cleanSentence;
-      sentenceCount++;
-      
-      // Create paragraph every 2-3 sentences or at natural breaks
-      const hasNaturalBreak = cleanSentence.match(
-        /(Once upon a time|One day|The next day|Meanwhile|Later that|Finally|In the end|After that|The following|Soon after|Eventually|Suddenly)/i
-      );
-      
-      if (hasNaturalBreak || sentenceCount >= 3) {
-        if (currentPara.trim()) {
-          paragraphs.push(currentPara.trim());
-          currentPara = '';
-          sentenceCount = 0;
+      sentences.forEach((sentence) => {
+        const clean = sentence.trim();
+        currentPara += (currentPara ? ' ' : '') + clean;
+        sentenceCount++;
+        
+        // Create paragraph every 3 sentences or at natural story breaks
+        const hasNaturalBreak = clean.match(
+          /(Once upon a time|One day|The next day|Meanwhile|Later|Finally|In the end|After that|Eventually|Suddenly)/i
+        );
+        
+        if (hasNaturalBreak || sentenceCount >= 3) {
+          if (currentPara.trim()) {
+            paragraphs.push(currentPara.trim());
+            currentPara = '';
+            sentenceCount = 0;
+          }
         }
+      });
+      
+      // Add remaining content
+      if (currentPara.trim()) {
+        paragraphs.push(currentPara.trim());
       }
-    });
-    
-    // Add any remaining content
-    if (currentPara.trim()) {
-      paragraphs.push(currentPara.trim());
     }
     
-    // Step 4: Final cleanup of paragraphs
-    const cleanParagraphs = paragraphs
-      .map(p => {
-        return p
-          .replace(/\s+/g, ' ') // Normalize spaces
-          .replace(/^\s*[,.:;]+/, '') // Remove leading punctuation
-          .replace(/[,.:;]+\s*$/, '.') // Ensure ending punctuation
-          .trim();
-      })
-      .filter(p => p && p.length > 30); // Keep substantial paragraphs
+    // Clean up and filter paragraphs
+    const finalParagraphs = paragraphs
+      .map(p => p.trim())
+      .filter(p => p && p.length > 20); // Keep meaningful paragraphs
     
-    console.log('📖 Cleaned paragraphs:', cleanParagraphs.length);
+    console.log('📖 Story ready:', finalParagraphs.length, 'paragraphs');
     
-    // FALLBACK: If aggressive cleaning removed everything, try less aggressive
-    if (cleanParagraphs.length === 0 && content) {
-      console.log('⚠️ Fallback: Using simple paragraph split');
-      // Just do basic cleaning and split
-      const fallback = content
-        .replace(/\\n/g, '\n')
-        .replace(/In the \w+ scene[,:]?/gi, '')
-        .replace(/Scene \d+:/gi, '')
-        .split(/\n+/)
-        .map(p => p.trim())
-        .filter(p => p.length > 30 && !p.includes('{') && !p.includes('scene_'));
-      
-      if (fallback.length > 0) return fallback;
-      
-      // Last resort - return something
-      return [content.substring(0, 1000)];
+    // Fallback - if no paragraphs, return content as is
+    if (finalParagraphs.length === 0 && content) {
+      return [content];
     }
     
-    return cleanParagraphs;
+    return finalParagraphs;
   };
 
   useEffect(() => {
@@ -145,10 +91,10 @@ const StoryView = () => {
       setLoading(true);
       const data = await storyAPI.getStory(id);
       
-      // DEBUG: Verify field mapping worked
-      console.log('✅ Story loaded successfully');
-      console.log('✅ Content field exists:', !!data?.content);
-      console.log('✅ Content length:', data?.content?.length || 0);
+      // IMPORTANT: We only use story.content (which is mapped from story_text in api.js)
+      // All scene/JSON data is ignored for display purposes
+      console.log('✅ Story loaded - using story_text field only');
+      console.log('✅ Story content ready:', data?.content?.length || 0, 'characters');
       
       setStory(data);
     } catch (err) {
