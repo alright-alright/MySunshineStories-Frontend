@@ -55,6 +55,12 @@ const StoryView = () => {
   };
 
   const handleShare = async () => {
+    // Add null check to prevent crash
+    if (!story) {
+      console.error('Cannot share: story not loaded');
+      return;
+    }
+    
     const title = story.title || 'Personalized Story';
     const sunshineName = story.sunshine_name || 'Your Sunshine';
     
@@ -156,12 +162,12 @@ const StoryView = () => {
             <div className="space-y-3 text-gray-700">
               {story?.content ? (
                 <>
-                  {story.content.split('\n\n').slice(0, 5).map((paragraph, index) => (
+                  {story.content.split(/\n+/).filter(p => p.trim()).slice(0, 5).map((paragraph, index) => (
                     <p key={index} className="leading-relaxed">
-                      {paragraph}
+                      {paragraph.trim()}
                     </p>
                   ))}
-                  {story.content.split('\n\n').length > 5 && (
+                  {story.content.split(/\n+/).filter(p => p.trim()).length > 5 && (
                     <p className="text-gray-500 italic mt-4">... Continue reading in full screen</p>
                   )}
                 </>
@@ -212,9 +218,9 @@ const StoryView = () => {
             <div className="flex-1 overflow-y-auto p-8 bg-gradient-to-br from-yellow-50 to-white">
               <div className="prose prose-lg max-w-none">
                 {story?.content ? (
-                  story.content.split('\n\n').map((paragraph, index) => (
+                  story.content.split(/\n+/).filter(p => p.trim()).map((paragraph, index) => (
                     <p key={index} className="mb-4 text-gray-700 leading-relaxed">
-                      {paragraph}
+                      {paragraph.trim()}
                     </p>
                   ))
                 ) : (
@@ -277,11 +283,11 @@ const StoryView = () => {
           </div>
         </div>
 
-        {/* Story Illustration */}
-        {story.illustration_url && (
+        {/* Story Illustration - Use image_urls[0] instead of illustration_url */}
+        {story.image_urls && story.image_urls[0] && (
           <div className="p-8 bg-gradient-to-b from-yellow-50 to-white">
             <img
-              src={`${import.meta.env.VITE_API_URL}${story.illustration_url}`}
+              src={story.image_urls[0]}
               alt="Story illustration"
               className="w-full max-w-2xl mx-auto rounded-xl shadow-md"
             />
@@ -292,9 +298,9 @@ const StoryView = () => {
         <div className="p-8">
           <div className="prose prose-lg max-w-none">
             {story?.content ? (
-              story.content.split('\n\n').map((paragraph, index) => (
+              story.content.split(/\n+/).filter(p => p.trim()).map((paragraph, index) => (
                 <p key={index} className="mb-4 text-gray-700 leading-relaxed">
-                  {paragraph}
+                  {paragraph.trim()}
                 </p>
               ))
             ) : (
