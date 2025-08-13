@@ -228,20 +228,24 @@ const Dashboard = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-1">
-                      <h4 className="font-semibold text-gray-800">{story.title}</h4>
-                      <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">
-                        {story.child_name}
-                      </span>
+                      <h4 className="font-semibold text-gray-800">{story.title || 'Untitled Story'}</h4>
+                      {story.child_name && (
+                        <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">
+                          {story.child_name}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-sm text-gray-600 mb-2">{story.fear_or_challenge}</p>
+                    {story.fear_or_challenge && (
+                      <p className="text-sm text-gray-600 mb-2">{story.fear_or_challenge}</p>
+                    )}
                     <div className="flex items-center space-x-4 text-xs text-gray-500">
                       <span className="flex items-center space-x-1">
                         <Calendar className="w-3 h-3" />
-                        <span>{new Date(story.created_at).toLocaleDateString()}</span>
+                        <span>{story.created_at ? new Date(story.created_at).toLocaleDateString() : 'Recently'}</span>
                       </span>
                       <span className="flex items-center space-x-1">
                         <Clock className="w-3 h-3" />
-                        <span>{story.reading_time} min read</span>
+                        <span>{story.reading_time || 5} min read</span>
                       </span>
                     </div>
                   </div>

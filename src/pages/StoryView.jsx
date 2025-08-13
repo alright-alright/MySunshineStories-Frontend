@@ -31,12 +31,17 @@ const StoryView = () => {
 
   const handleDownload = () => {
     // Create a downloadable version of the story
-    const storyContent = `${story.title}\n\n${story.content}\n\n---\nGenerated for ${story.sunshine_name} on ${new Date(story.created_at).toLocaleDateString()}`;
+    const title = story.title || 'Untitled Story';
+    const content = story.content || 'Story content not available';
+    const sunshineName = story.sunshine_name || 'Your Sunshine';
+    const createdAt = story.created_at ? new Date(story.created_at).toLocaleDateString() : new Date().toLocaleDateString();
+    
+    const storyContent = `${title}\n\n${content}\n\n---\nGenerated for ${sunshineName} on ${createdAt}`;
     const blob = new Blob([storyContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${story.title.replace(/\s+/g, '_')}.txt`;
+    a.download = `${title.replace(/\s+/g, '_')}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -44,11 +49,14 @@ const StoryView = () => {
   };
 
   const handleShare = async () => {
+    const title = story.title || 'Personalized Story';
+    const sunshineName = story.sunshine_name || 'Your Sunshine';
+    
     if (navigator.share) {
       try {
         await navigator.share({
-          title: story.title,
-          text: `Check out this personalized story for ${story.sunshine_name}!`,
+          title: title,
+          text: `Check out this personalized story for ${sunshineName}!`,
           url: window.location.href
         });
       } catch (err) {
@@ -138,15 +146,21 @@ const StoryView = () => {
           
           {/* Preview Content Box - 400px height as requested */}
           <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-6 overflow-y-auto" style={{ height: '400px' }}>
-            <h3 className="text-2xl font-bold text-gray-800 mb-4">{story.title}</h3>
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">{story.title || 'Untitled Story'}</h3>
             <div className="space-y-3 text-gray-700">
-              {story.content.split('\n\n').slice(0, 5).map((paragraph, index) => (
-                <p key={index} className="leading-relaxed">
-                  {paragraph}
-                </p>
-              ))}
-              {story.content.split('\n\n').length > 5 && (
-                <p className="text-gray-500 italic mt-4">... Continue reading in full screen</p>
+              {story.content ? (
+                <>
+                  {story.content.split('\n\n').slice(0, 5).map((paragraph, index) => (
+                    <p key={index} className="leading-relaxed">
+                      {paragraph}
+                    </p>
+                  ))}
+                  {story.content.split('\n\n').length > 5 && (
+                    <p className="text-gray-500 italic mt-4">... Continue reading in full screen</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-gray-500 italic">Story content is being generated...</p>
               )}
             </div>
           </div>
@@ -181,7 +195,7 @@ const StoryView = () => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             <div className="bg-gradient-to-r from-yellow-400 to-orange-500 p-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">{story.title}</h2>
+              <h2 className="text-2xl font-bold text-white">{story.title || 'Untitled Story'}</h2>
               <button
                 onClick={() => setIsFullScreen(false)}
                 className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition"
@@ -191,11 +205,15 @@ const StoryView = () => {
             </div>
             <div className="flex-1 overflow-y-auto p-8 bg-gradient-to-br from-yellow-50 to-white">
               <div className="prose prose-lg max-w-none">
-                {story.content.split('\n\n').map((paragraph, index) => (
-                  <p key={index} className="mb-4 text-gray-700 leading-relaxed">
-                    {paragraph}
-                  </p>
-                ))}
+                {story.content ? (
+                  story.content.split('\n\n').map((paragraph, index) => (
+                    <p key={index} className="mb-4 text-gray-700 leading-relaxed">
+                      {paragraph}
+                    </p>
+                  ))
+                ) : (
+                  <p className="text-gray-500 italic">Story content is being generated...</p>
+                )}
               </div>
             </div>
           </div>
@@ -242,10 +260,10 @@ const StoryView = () => {
           <div className="flex items-center gap-2 mb-2">
             <BookOpen className="w-6 h-6" />
             <span className="text-sm opacity-90">
-              A story for {story.sunshine_name}
+              A story for {story.sunshine_name || 'Your Sunshine'}
             </span>
           </div>
-          <h1 className="text-3xl font-bold mb-2">{story.title}</h1>
+          <h1 className="text-3xl font-bold mb-2">{story.title || 'Untitled Story'}</h1>
           <div className="flex items-center gap-4 text-sm opacity-90">
             <span>Theme: {story.fear_or_challenge || 'General'}</span>
             <span>•</span>
@@ -267,11 +285,15 @@ const StoryView = () => {
         {/* Story Text */}
         <div className="p-8">
           <div className="prose prose-lg max-w-none">
-            {story.content.split('\n\n').map((paragraph, index) => (
-              <p key={index} className="mb-4 text-gray-700 leading-relaxed">
-                {paragraph}
-              </p>
-            ))}
+            {story.content ? (
+              story.content.split('\n\n').map((paragraph, index) => (
+                <p key={index} className="mb-4 text-gray-700 leading-relaxed">
+                  {paragraph}
+                </p>
+              ))
+            ) : (
+              <p className="text-gray-500 italic">Story content is being generated...</p>
+            )}
           </div>
 
           {/* Story Footer */}

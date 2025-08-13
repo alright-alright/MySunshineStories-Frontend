@@ -299,7 +299,17 @@ export const storyAPI = {
   // Get single story
   getStory: async (id) => {
     const response = await api.get(`/api/v2/stories/${id}`);
-    return response.data;
+    // Ensure story data has required fields with fallbacks
+    const story = response.data;
+    return {
+      ...story,
+      title: story.title || 'Untitled Story',
+      content: story.content || '',
+      sunshine_name: story.sunshine_name || story.child_name || 'Your Sunshine',
+      fear_or_challenge: story.fear_or_challenge || null,
+      tone: story.tone || 'Whimsical',
+      created_at: story.created_at || new Date().toISOString()
+    };
   },
   
   // Toggle favorite
