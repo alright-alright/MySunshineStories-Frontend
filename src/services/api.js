@@ -334,9 +334,43 @@ export const storyAPI = {
     console.log('🎯 story.content exists?', 'content' in story);
     console.log('🎯 Full response:', story);
     
-    // Clean up content from GPT response artifacts
+    // Clean up content from GPT response artifacts and JSON contamination
     const cleanContent = (text) => {
       if (!text) return '';
+      
+      // If the text contains JSON structure, try to extract just the story_text
+      if (text.includes('{"title"') || text.includes('"story_text"')) {
+        try {
+          // Try to parse as JSON first
+          const parsed = JSON.parse(text);
+          if (parsed.story_text) {
+            return parsed.story_text.trim();
+          }
+        } catch {
+          // If not valid JSON, try to extract story_text field manually
+          const storyTextMatch = text.match(/"story_text"\s*:\s*"([^"]+(?:\\.[^"]+)*)"/);
+          if (storyTextMatch && storyTextMatch[1]) {
+            // Unescape the extracted text
+            return storyTextMatch[1]
+              .replace(/\\n/g, '\n')
+              .replace(/\\"/g, '"')
+              .replace(/\\'/g, "'")
+              .replace(/\\\\/g, '\\')
+              .trim();
+          }
+          
+          // Last resort: remove JSON artifacts
+          return text
+            .replace(/^.*?"story_text"\s*:\s*"/s, '')
+            .replace(/".*?}.*?$/s, '')
+            .replace(/\\n/g, '\n')
+            .replace(/\\"/g, '"')
+            .replace(/\\'/g, "'")
+            .trim();
+        }
+      }
+      
+      // Clean up any remaining artifacts
       return text
         .replace(/```json/gi, '')
         .replace(/```/g, '')
