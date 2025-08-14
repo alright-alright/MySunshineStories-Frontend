@@ -340,11 +340,6 @@ export const storyAPI = {
       return text
         .replace(/```json/gi, '')
         .replace(/```/g, '')
-        .replace(/^\{.*?"story":\s*"/s, '')  // Remove JSON wrapper if present
-        .replace(/"\s*\}$/s, '')  // Remove closing JSON if present
-        .replace(/\\n/g, '\n')  // Convert escaped newlines
-        .replace(/\\'/g, "'")  // Convert escaped quotes
-        .replace(/\\"/g, '"')  // Convert escaped double quotes
         .trim();
     };
     

@@ -12,6 +12,27 @@ const StoryView = () => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isVideoFullScreen, setIsVideoFullScreen] = useState(false);
 
+  // Professional text formatting function
+  const formatStoryParagraphs = (text) => {
+    if (!text) return [];
+    
+    // Step 1: Split by sentences using professional regex
+    const sentences = text.split(/(?<=[.!?])\s+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+    
+    // Step 2: Group every 2-3 sentences into paragraphs
+    const paragraphs = [];
+    for (let i = 0; i < sentences.length; i += 3) {
+      const paragraph = sentences.slice(i, i + 3).join(' ');
+      if (paragraph.trim()) {
+        paragraphs.push(paragraph);
+      }
+    }
+    
+    return paragraphs;
+  };
+
   useEffect(() => {
     fetchStory();
   }, [id]);
@@ -162,17 +183,12 @@ const StoryView = () => {
             <div className="space-y-4 text-gray-700">
               {story?.content ? (
                 <>
-                  {story.content.split(/(?<=[.!?])\s+(?=[A-Z])/).reduce((acc, sentence, i) => {
-                    const paraIndex = Math.floor(i / 3);
-                    if (!acc[paraIndex]) acc[paraIndex] = '';
-                    acc[paraIndex] += sentence + ' ';
-                    return acc;
-                  }, []).map(p => p.trim()).slice(0, 3).map((paragraph, index) => (
+                  {formatStoryParagraphs(story.content).slice(0, 3).map((paragraph, index) => (
                     <p key={index} className="leading-relaxed text-base mb-4">
                       {paragraph}
                     </p>
                   ))}
-                  {story.content.split(/(?<=[.!?])\s+(?=[A-Z])/).length > 9 && (
+                  {formatStoryParagraphs(story.content).length > 3 && (
                     <p className="text-gray-500 italic mt-4">... Continue reading in full screen</p>
                   )}
                 </>
@@ -223,12 +239,7 @@ const StoryView = () => {
             <div className="flex-1 overflow-y-auto p-8 bg-gradient-to-br from-yellow-50 to-white">
               <div className="prose prose-lg max-w-none">
                 {story?.content ? (
-                  story.content.split(/(?<=[.!?])\s+(?=[A-Z])/).reduce((acc, sentence, i) => {
-                    const paraIndex = Math.floor(i / 3);
-                    if (!acc[paraIndex]) acc[paraIndex] = '';
-                    acc[paraIndex] += sentence + ' ';
-                    return acc;
-                  }, []).map(p => p.trim()).map((paragraph, index) => (
+                  formatStoryParagraphs(story.content).map((paragraph, index) => (
                     <p key={index} className="mb-6 text-gray-700 leading-relaxed text-lg">
                       {paragraph}
                     </p>
@@ -316,12 +327,7 @@ const StoryView = () => {
         <div className="p-8">
           <div className="prose prose-lg max-w-none">
             {story?.content ? (
-              story.content.split(/(?<=[.!?])\s+(?=[A-Z])/).reduce((acc, sentence, i) => {
-                const paraIndex = Math.floor(i / 3);
-                if (!acc[paraIndex]) acc[paraIndex] = '';
-                acc[paraIndex] += sentence + ' ';
-                return acc;
-              }, []).map(p => p.trim()).map((paragraph, index) => (
+              formatStoryParagraphs(story.content).map((paragraph, index) => (
                 <p key={index} className="mb-6 text-gray-700 leading-relaxed text-lg">
                   {paragraph}
                 </p>
